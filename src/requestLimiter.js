@@ -2,8 +2,9 @@ const MemoryStore = require('./memoryStore');
 
 function RequestLimiter(_options) {
     const options = Object.assign({
-            maxRequests: 10,
+            maxRequests: 100,
             routesList: [],
+            global: true,
             headers: true,
             message: "Too many requests, try again later",
             statusCode: 429,
@@ -36,7 +37,7 @@ function RequestLimiter(_options) {
             return next();
         }
 
-        if (!options.store.routesTree[url] || !options.store.routesTree[url].includes(method)) {
+        if (options.global && (!options.store.routesTree[url] || !options.store.routesTree[url].includes(method))) {
             return next();
         }
 
