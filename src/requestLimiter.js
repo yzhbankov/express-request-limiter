@@ -6,7 +6,7 @@ function RequestLimiter(_options) {
             routesList: [],
             global: true,
             headers: true,
-            message: "Too many requests, try again later",
+            message: "Too many requests, please try again later",
             statusCode: 429,
             skip: function (/*req, res*/) {
                 return false;
@@ -43,7 +43,7 @@ function RequestLimiter(_options) {
 
         if (options.headers && !req.headersSent) {
             res.setHeader("X-RequestLimit-Limit", options.maxRequests);
-            res.setHeader("X-RequestLimit-Free", options.maxRequests - options.store.concurrent);
+            res.setHeader("X-RequestLimit-Usage", options.store.concurrent);
         }
 
         if (options.store.concurrent >= options.maxRequests) {
