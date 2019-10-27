@@ -1,60 +1,69 @@
-const error = require('http-errors');
-
-const store = {
-    total: 0,
-    increment: function() {
-        this.total += 1;
-        console.log('[increment] total  requests ', this.total);
-    },
-    decrement: function() {
-        if (this.total > 0) {
-            this.total -= 1;
-            console.log('[decrement] total  requests ', this.total);
-        }
-    }
-};
+const MemoryStore = require('./memoryStore');
 
 function RequestLimiter(_options) {
     const options = Object.assign({
             maxRequests: 10,
-            list: [],
+            routesList: [],
             headers: true,
             message: "Too many requests, try again later",
-            status: 429,
+            statusCode: 429,
             skip: function (/*req, res*/) {
                 return false;
             },
-            handler: function (req, res /*, next*/) {
+            handler: function (req, res, next) {
                 res.status(options.statusCode).send(options.message);
             },
         },
         _options);
 
+    options.store = options.store || new MemoryStore();
+
+    if (Array.isArray(options.routesList) && options.routesList.length > 0) {
+        options.routesList.forEach((route) => {
+            if (!options.store.routesTree[route.path]) {
+                options.store.routesTree[route.path] = [route.method];
+            } else {
+                options.store.routesTree[route.path].push(route.method);
+            }
+        })
+    }
+
     function requestLimit(req, res, next) {
+        const method = req.method;
+        const url = req.originalUrl;
+
         if (options.skip(req, res)) {
             return next();
         }
 
-        if (store.total >= options.maxRequests) {
-            const err = new error(429, 'Try again latter');
-            next(err);
+        if (!options.store.routesTree[url] || !options.store.routesTree[url].includes(method)) {
+            return next();
         }
-        store.increment();
 
-        Promise.resolve(store.total).catch(next)
+        if (options.headers && !req.headersSent) {
+            res.setHeader("X-RequestLimit-Limit", options.maxRequests);
+            res.setHeader("X-RequestLimit-Free", options.maxRequests - options.store.concurrent);
+        }
+
+        if (options.store.concurrent >= options.maxRequests) {
+           return options.handler(req, res, next);
+        }
+
+        options.store.increment();
+
+        Promise.resolve(options.store.concurrent).catch(next)
             .then(() => {
                 res.on('finish', () => {
-                    store.decrement();
+                    options.store.decrement();
                 });
 
                 res.on('close', () => {
-                    store.decrement();
+                    options.store.decrement();
                 });
 
-                next();
+                return next();
             });
     }
-
     return requestLimit;
 }
 

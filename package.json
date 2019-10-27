@@ -22,7 +22,6 @@
   },
   "homepage": "https://github.com/yzhbankov/express-request-limiter#readme",
   "dependencies": {
-    "express": "^4.17.1",
-    "http-errors": "^1.7.3"
+    "express": "^4.17.1"
   }
 }
