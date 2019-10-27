@@ -13,7 +13,12 @@
   "keywords": [
     "express",
     "request",
-    "limit"
+    "limit",
+    "express-request-limit",
+    "middleware",
+    "authorization",
+    "security",
+    "load"
   ],
   "author": "yzhbankov",
   "license": "MIT",
