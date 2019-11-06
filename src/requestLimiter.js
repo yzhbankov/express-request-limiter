@@ -18,16 +18,7 @@ function RequestLimiter(_options) {
         _options);
 
     options.store = options.store || new MemoryStore();
-
-    if (Array.isArray(options.routesList) && options.routesList.length > 0) {
-        options.routesList.forEach((route) => {
-            if (!options.store.routesTree[route.path]) {
-                options.store.routesTree[route.path] = [route.method];
-            } else {
-                options.store.routesTree[route.path].push(route.method);
-            }
-        })
-    }
+    options.arrayToTree(options.routesList);
 
     function requestLimit(req, res, next) {
         const method = req.method;
