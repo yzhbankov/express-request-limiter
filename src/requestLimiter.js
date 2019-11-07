@@ -18,7 +18,7 @@ function RequestLimiter(_options) {
         _options);
 
     options.store = options.store || new MemoryStore();
-    options.arrayToTree(options.routesList);
+    options.store.arrayToTree(options.routesList);
 
     function requestLimit(req, res, next) {
         const method = req.method;
