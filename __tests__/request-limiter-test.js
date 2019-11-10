@@ -262,5 +262,87 @@ describe('Test the root path', () => {
         });
     });
 
+    describe('It should specify skip function', () => {
+        beforeAll(() => {
+            const requestLimiter = RequestLimiter({
+                maxRequests: 2,
+                skip: function (req, res) {
+                    if (req.url === '/path_one') {
+                        return true;
+                    }
+                },
+                headers: true,
+                routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
+            });
+
+            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+                console.log('Server is listening on port 3000!');
+            });
+        });
+
+        afterAll(() => {
+            if (server) {
+                server.close();
+                console.log('The server is closed');
+            }
+        });
+
+        test('It should allow all requests for route "/path_one" due to "skip" method', async () => {
+            const responseOne = request(server).get('/path_one');
+            const responseTwo = request(server).get('/path_one');
+            const responseThree = request(server).get('/path_one');
+            const responseFour = request(server).get('/path_one');
+            await Promise.all([responseOne, responseTwo, responseThree, responseFour])
+                .then(([_resOne, _resTwo, _resThree, _resFour]) => {
+                    expect(_resOne.statusCode).toBe(200);
+                    expect(_resTwo.statusCode).toBe(200);
+                    expect(_resThree.statusCode).toBe(200);
+                    expect(_resFour.statusCode).toBe(200);
+                });
+        });
+    });
+
+    describe('It should specify handler function', () => {
+        let statusCode = 422;
+        let message = 'From handler function';
+        beforeAll(() => {
+            const requestLimiter = RequestLimiter({
+                maxRequests: 2,
+                handler: function (req, res, next) {
+                    res.status(statusCode).send(message);
+                },
+                headers: true,
+                routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
+            });
+
+            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+                console.log('Server is listening on port 3000!');
+            });
+        });
+
+        afterAll(() => {
+            if (server) {
+                server.close();
+                console.log('The server is closed');
+            }
+        });
+
+        test('It should response with specified in "handler" way ', async () => {
+            const responseOne = request(server).get('/path_one');
+            const responseTwo = request(server).get('/path_one');
+            const responseThree = request(server).get('/path_one');
+            const responseFour = request(server).get('/path_one');
+            await Promise.all([responseOne, responseTwo, responseThree, responseFour])
+                .then(([_resOne, _resTwo, _resThree, _resFour]) => {
+                    expect(_resOne.statusCode).toBe(200);
+                    expect(_resTwo.statusCode).toBe(200);
+                    expect(_resThree.statusCode).toBe(statusCode);
+                    expect(_resThree.text).toBe(message);
+                    expect(_resFour.statusCode).toBe(statusCode);
+                    expect(_resFour.text).toBe(message);
+                });
+        });
+    });
+
 });
 
