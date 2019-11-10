@@ -8,7 +8,8 @@ const delay = 500; // ms
 describe('Test the root path', () => {
     describe('It should init server and check all routes', () => {
         beforeAll(() => {
-            server = initApp().listen(3000, () => {
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp([], routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -21,34 +22,33 @@ describe('Test the root path', () => {
         });
 
         test('It should response the GET method from /path_one', async () => {
-            const response = await request(server).get('/path_one');
-            expect(response.statusCode).toBe(200);
-        });
-
-        test('It should response the POST method from /path_one', async () => {
-            const response = await request(server).post('/path_one', {});
-            expect(response.statusCode).toBe(200);
-        });
-
-        test('It should response the PUT method from /path_one', async () => {
-            const response = await request(server).put('/path_one', {});
-            expect(response.statusCode).toBe(200);
+            const responseGET = await request(server).get('/path_one');
+            const responsePOST = await request(server).post('/path_one', {});
+            const responsePUT = await request(server).put('/path_one', {});
+            const responseDELETE = await request(server).del('/path_one');
+            expect(responseGET.statusCode).toBe(200);
+            expect(responsePOST.statusCode).toBe(200);
+            expect(responsePUT.statusCode).toBe(200);
+            expect(responseDELETE.statusCode).toBe(204);
         });
 
         test('It should response the GET method from /path_two', async () => {
-            const response = await request(server).get('/path_two');
-            expect(response.statusCode).toBe(200);
-        });
-
-        test('It should response the DELETE method from /path_two', async () => {
-            const response = await request(server).del('/path_two');
-            expect(response.statusCode).toBe(204);
+            const responseGET = await request(server).get('/path_two');
+            const responsePOST = await request(server).post('/path_two', {});
+            const responsePUT = await request(server).put('/path_two', {});
+            const responseDELETE = await request(server).del('/path_two');
+            expect(responseGET.statusCode).toBe(200);
+            expect(responsePOST.statusCode).toBe(200);
+            expect(responsePUT.statusCode).toBe(200);
+            expect(responseDELETE.statusCode).toBe(204);
         });
     });
 
     describe('It should init server with delay middleware and check all routes', () => {
         beforeAll(() => {
-            server = initApp([delayMiddleware(delay)]).listen(3000, () => {
+            const globalMiddlewareList = [delayMiddleware(delay)];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -94,8 +94,9 @@ describe('Test the root path', () => {
                 headers: true,
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
-
-            server = initApp([requestLimiter]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -125,8 +126,9 @@ describe('Test the root path', () => {
                 headers: false,
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
-
-            server = initApp([requestLimiter]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -153,8 +155,9 @@ describe('Test the root path', () => {
                 headers: true,
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
-
-            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter, delayMiddleware(delay)];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -234,7 +237,9 @@ describe('Test the root path', () => {
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
 
-            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter, delayMiddleware(delay)];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -275,7 +280,9 @@ describe('Test the root path', () => {
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
 
-            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter, delayMiddleware(delay)];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -315,7 +322,9 @@ describe('Test the root path', () => {
                 routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
             });
 
-            server = initApp([requestLimiter, delayMiddleware(delay)]).listen(3000, () => {
+            const globalMiddlewareList = [requestLimiter, delayMiddleware(delay)];
+            const routesList = [{ path: '/path_one' }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
                 console.log('Server is listening on port 3000!');
             });
         });
@@ -340,6 +349,48 @@ describe('Test the root path', () => {
                     expect(_resThree.text).toBe(message);
                     expect(_resFour.statusCode).toBe(statusCode);
                     expect(_resFour.text).toBe(message);
+                });
+        });
+    });
+
+    describe('It should use limiter locally on one router', () => {
+        beforeAll(() => {
+            const requestLimiter = RequestLimiter({
+                maxRequests: 2,
+                headers: true,
+                routesList: [{ path: '/path_one', method: 'GET' }, { path: '/path_two', method: 'DELETE' }],
+                global: false,
+            });
+
+            const globalMiddlewareList = [];
+            const routesList = [{ path: '/path_one', middleware: [requestLimiter, delayMiddleware(delay)] }, { path: '/path_two' }];
+            server = initApp(globalMiddlewareList, routesList).listen(3000, () => {
+                console.log('Server is listening on port 3000!');
+            });
+        });
+
+        afterAll(() => {
+            if (server) {
+                server.close();
+                console.log('The server is closed');
+            }
+        });
+
+        test('It should response with error message only for one specific route', async () => {
+            const responseOne = request(server).get('/path_one');
+            const responseTwo = request(server).get('/path_one');
+            const responseThree = request(server).get('/path_one');
+            const responseFour = request(server).get('/path_two');
+            const responseFive = request(server).get('/path_two');
+            const responseSix = request(server).get('/path_one');
+            await Promise.all([responseOne, responseTwo, responseThree, responseFour, responseFive, responseSix])
+                .then(([_resOne, _resTwo, _resThree, _resFour, _resFive, _resSix]) => {
+                    expect(_resOne.statusCode).toBe(200);
+                    expect(_resTwo.statusCode).toBe(200);
+                    expect(_resThree.statusCode).toBe(429);
+                    expect(_resFour.statusCode).toBe(200);
+                    expect(_resFive.statusCode).toBe(200);
+                    expect(_resSix.statusCode).toBe(429);
                 });
         });
     });

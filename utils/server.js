@@ -1,33 +1,50 @@
 const express = require('express');
 
-function initApp(middlewaresList = []) {
+
+function createCRUDForRoute(app, route) {
+    if (route && route.path && route.middleware) {
+        app.get(route.path, route.middleware, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.post(route.path, route.middleware, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.put(route.path, route.middleware, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.del(route.path, route.middleware, (req, res, next) => {
+            res.status(204).send(`Hello from method=GET url=${route}`);
+        });
+    } else if (route && route.path) {
+        app.get(route.path, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.post(route.path, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.put(route.path, (req, res, next) => {
+            res.send(`Hello from method=GET url=${route}`);
+        });
+        app.del(route.path, (req, res, next) => {
+            res.status(204).send(`Hello from method=GET url=${route}`);
+        });
+    }
+}
+
+function initApp(globalMiddlewaresList = [], routerList = []) {
     const app = express();
 
-    if (Array.isArray(middlewaresList) && middlewaresList.length > 0) {
-        for (let i = 0; i < middlewaresList.length; i += 1) {
-            app.use(middlewaresList[i])
+    if (Array.isArray(globalMiddlewaresList) && globalMiddlewaresList.length > 0) {
+        for (let i = 0; i < globalMiddlewaresList.length; i += 1) {
+            app.use(globalMiddlewaresList[i])
         }
     }
 
-    app.get('/path_one', (req, res, next) => {
-        res.send('Hello from GET path_one route')
-    });
-
-    app.post('/path_one', (req, res, next) => {
-        res.send('Hello from POST path_one route')
-    });
-
-    app.put('/path_one', (req, res, next) => {
-        res.send('Hello from PUT path_one route')
-    });
-
-    app.get('/path_two', (req, res, next) => {
-        res.send('Hello from GET path_two route')
-    });
-
-    app.del('/path_two', (req, res, next) => {
-        res.status(204).send('Hello from DEL path_two route')
-    });
+    if (Array.isArray(routerList) && routerList.length > 0) {
+        for (let i = 0; i < routerList.length; i += 1) {
+            createCRUDForRoute(app, routerList[i])
+        }
+    }
 
     return app;
 }
