@@ -121,5 +121,9 @@
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.71.1",
     "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "tinypool": "^2.1.2",
+    "esbuild": "^0.28.1"
   }
 }
