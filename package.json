@@ -96,8 +96,7 @@
   },
   "homepage": "https://github.com/yzhbankov/express-request-limiter#readme",
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "access": "public"
   },
   "peerDependencies": {
     "express": ">=4.0.0 <6"
