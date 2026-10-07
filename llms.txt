@@ -1,0 +1,93 @@
+# express-request-limiter
+
+> Super light, super fast concurrency limiter middleware for Express 5/4, Connect and plain Node.js http. Caps the number of requests IN FLIGHT at the same time (not requests per time window). Rejects with 429 or queues (FIFO) until a slot frees. 0 dependencies, ~20 kB, ~240 ns per request (~4x less than express-rate-limit), 100% line coverage enforced in CI, 166 tests on Express 5 and 4. Node >= 20. TypeScript; ships ESM + CJS + types.
+
+## Install and import
+
+```
+npm install express-request-limiter
+import requestLimiter, { MemoryStore } from 'express-request-limiter';   // ESM / TS (default or named `requestLimiter`)
+const { requestLimiter } = require('express-request-limiter');          // CJS (require() also returns the factory itself)
+```
+Types: `Options<Req, Res>`, `Middleware`, `Store`, `LimitInfo`, `RouteRule`. `req.requestLimit?: RequestLimitState` is declared on Express's `Request` via global augmentation.
+
+## Minimal usage
+
+```js
+app.use(requestLimiter({ max: 20 }));                                   // whole app, 20 at once
+app.post('/export', requestLimiter({ max: 2 }), handler);               // one route
+app.use(requestLimiter({ max: 5, routes: [{ path: '/api/*' }] }));      // only matching routes
+app.use(requestLimiter({ max: 4, keyGenerator: (req) => req.ip }));     // per key
+app.use(requestLimiter({ max: 4, queue: { maxSize: 100, timeout: 5000 } })); // queue instead of 429
+```
+
+## Options (all optional; unknown names throw TypeError at construction)
+
+- max: number | (req,res)=>number|Promise<number>. Default 100. 0 rejects all. Must be finite >= 0.
+- routes: Array<{ path: string|RegExp, methods?: string|string[] }>. Default [] = limit everything reaching the middleware. path forms: exact '/a/b'; param '/users/:id' (one segment); wildcard '/api/*' (any depth, excludes '/api' itself); RegExp. methods omitted/'*'/'all' = any method. Match ignores query string, trailing slash, case (unless caseSensitive). Inside mounted routers the full path incl. mount prefix is matched.
+- caseSensitive: boolean. Default false.
+- keyGenerator: (req,res)=>string|number|Promise. Default single shared key 'global'. Non-strings are stringified.
+- skip: (req,res)=>boolean|Promise<boolean>. true = pass through uncounted, no headers.
+- queue: false | true | { maxSize?: number (default 100, Infinity ok), timeout?: ms (default 10000, 0 = forever) }. Per-key FIFO. Reject reasons: 'queue-full', 'queue-timeout'. Disconnected waiters are dropped.
+- statusCode: 400..599. Default 429.
+- message: string | object | (req,res,info)=>string|object|Promise. string -> text/plain; object -> JSON. Default 'Too many requests, please try again later.'
+- retryAfter: seconds | false. Default 1. Rounded up. false/0 omits Retry-After.
+- headers: boolean | 'draft-8'. Default true -> X-Concurrency-Limit, X-Concurrency-Remaining, Retry-After on rejection. 'draft-8' -> IETF fields: RateLimit-Policy: "concurrency";q=<limit>;qu="concurrent-requests" and RateLimit: "concurrency";r=<remaining>[;t=<retryAfter>].
+- legacyHeaders: boolean. Default false. Also sends X-RequestLimit-Limit / X-RequestLimit-Usage (0.x names).
+- handler: (req,res,next,info)=>void. Replaces default rejection response; headers already set. next() admits uncounted.
+- onLimitReached: (req,res,info)=>void. Observer, runs before handler.
+- onQueued: (req,res,{key,limit,queueSize})=>void. Observer on enqueue.
+- store: Store. Default new MemoryStore(). See contract below.
+- passOnStoreError: boolean. Default false (store error -> next(err)). true = admit uncounted.
+- requestPropertyName: string | false. Default 'requestLimit'. Sets req[name] = { key, limit, current, remaining } on admission.
+- Deprecated aliases: maxRequests->max, routesList->routes, rule.method->rule.methods, global:false -> omit routes (warns).
+
+## info object (handler, onLimitReached, message fn)
+
+{ key: string, limit: number, reason: 'limit'|'queue-full'|'queue-timeout', queueSize?: number }
+
+## Middleware instance API
+
+limiter.store; limiter.options (frozen); limiter.resetKey(key); limiter.resetAll(); limiter.getQueueSize(key?)
+
+## Store contract (sync or Promise-returning)
+
+```ts
+interface Store {
+  acquire(key: string, limit: number): number | false | Promise<number | false>; // new count, or false when at limit; must be atomic per key
+  release(key: string): number | void | Promise<number | void>;                 // tolerate unknown keys, never negative
+  get?(key): number; resetKey?(key): void; resetAll?(): void;                    // optional
+}
+```
+MemoryStore: Map-based, synchronous, deletes keys at zero, has snapshot() and size. Share one instance across limiters for a shared pool. Redis example: docs/stores.md, examples/redis-store.js (Lua check-and-INCR with TTL).
+
+## Guarantees
+
+- Slot released exactly once per admitted request (on first of res 'finish' / 'close'); client aborts release too.
+- Same limiter instance mounted twice counts a request once.
+- Rejected requests consume no slot. Headers never written after res.headersSent.
+- All user callbacks are wrapped: throws and rejections -> next(err).
+- Validation at construction only; null/undefined for any option means "use the default"; hot path with MemoryStore allocates no promises.
+
+## Response headers
+
+Admitted: X-Concurrency-Limit=<limit>, X-Concurrency-Remaining=<limit-current>. Rejected: same with Remaining=0 plus Retry-After=<retryAfter>.
+
+## Performance (micro-bench, Node 20)
+
+~210 ns admit+release global key; ~290 ns per-key with route match; ~70 ns pass-through; ~115 ns reject. express-rate-limit on the same harness: ~1000 ns per request. Package: 0 deps, ~20 kB packed.
+
+## Files
+
+- src/index.ts (entry: default + named requestLimiter, RequestLimiter, MemoryStore, compileRoutes, all types), src/types.ts
+- src/request-limiter.ts (middleware), src/memory-store.ts, src/routes.ts (compileRoutes/getRequestPath), src/options.ts (validation)
+- dist/ (build output via tsup: index.js ESM, index.cjs CJS, index.d.ts, index.d.cts)
+- docs/api.md (full reference), docs/stores.md, docs/recipes.md, docs/migration.md, AGENTS.md (contributor guide for agents)
+
+## Common mistakes
+
+- Expecting a time-window rate limit: use express-rate-limit for that; combine both if needed. Shared option names with express-rate-limit: keyGenerator, skip, handler, message, statusCode, legacyHeaders, requestPropertyName, passOnStoreError, store, resetKey. Differences: `max` (not `limit`), default key is global (not per IP), no windowMs.
+- Listing routes without the router mount prefix: rules are matched against baseUrl + path.
+- Unbounded keyGenerator cardinality is fine for memory (keys are deleted at zero) but think about fairness.
+- With queue enabled and a shared async store, queues are per process.
+- supertest requests are lazy: start them (await / .then) before asserting on concurrency.
