@@ -36,7 +36,7 @@ Measured with `npm run bench:compare` on the same mock objects, Node 20. The two
 npm install express-request-limiter
 ```
 
-Node 20+. ESM and CommonJS. Types included. Express is an optional peer dependency; the middleware also runs on Connect and plain `http.createServer`.
+Node 20+. ESM and CommonJS. Types included. Express is an optional peer dependency; the middleware also runs on Connect and plain `http.createServer`. Releases are published to npm with [provenance](https://docs.npmjs.com/generating-provenance-statements), so every tarball is traceable to a CI run on this repository.
 
 ## Use
 
@@ -70,6 +70,25 @@ Retry-After: 1
 ```
 
 Downstream handlers can read `req.requestLimit` as `{ key, limit, current, remaining }`.
+
+## Without Express
+
+The middleware only touches standard request/response APIs, so it runs anywhere Connect-style middleware does — plain `node:http`, Connect, Fastify via `@fastify/middie`:
+
+```js
+import { createServer } from 'node:http';
+import requestLimiter from 'express-request-limiter';
+
+const limit = requestLimiter({ max: 10 });
+createServer((req, res) => {
+  limit(req, res, (err) => {
+    if (err) { res.statusCode = 500; return res.end(); }
+    handle(req, res); // your handler; rejected requests never get here
+  });
+}).listen(3000);
+```
+
+Koa and Next.js adapters are two lines each — see [recipes](docs/recipes.md#other-frameworks).
 
 ## Options
 
@@ -107,11 +126,11 @@ const { requestLimiter } = require('express-request-limiter');
 
 ## When to use it
 
-Protecting a database pool, a slow upstream, a CPU-heavy endpoint, or a render farm from being flooded. Backpressure, load shedding, the bulkhead pattern, per-tenant fairness. Pair it with a time-window rate limiter such as express-rate-limit when you need both "not too many at once" and "not too many per minute".
+Protecting a database pool, a slow upstream, a CPU-heavy endpoint, or a render farm from being flooded. Backpressure, load shedding, the bulkhead pattern, per-tenant fairness. Pair it with a time-window rate limiter such as express-rate-limit when you need both "not too many at once" and "not too many per minute" — [concurrency limiting vs. rate limiting](docs/concurrency-vs-rate-limiting.md) explains which protects against what.
 
 ## More
 
-- [API reference](docs/api.md), [recipes](docs/recipes.md), [custom stores and Redis](docs/stores.md), [migrating from 0.x](docs/migration.md)
+- [API reference](docs/api.md), [recipes](docs/recipes.md) (incl. Prometheus, Koa, Fastify, Next.js), [custom stores and Redis](docs/stores.md), [concurrency vs. rate limiting](docs/concurrency-vs-rate-limiting.md), [migrating from 0.x](docs/migration.md)
 - [`llms.txt`](llms.txt) for AI agents, [`AGENTS.md`](AGENTS.md) for contributors
 - `npm run check` runs lint, types, build, and the suite on Express 5 and 4; `npm run bench` and `npm run bench:compare` reproduce the numbers
 

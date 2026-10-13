@@ -95,6 +95,52 @@ app.use(requestLimiter({
 
 `req.requestLimit` is available to downstream handlers for per-request load headers or logs.
 
+## Prometheus metrics
+
+With [prom-client](https://www.npmjs.com/package/prom-client), export the
+in-flight count, queue size, and rejections. Gauges read the limiter on
+scrape via `collect()`, so nothing runs on the request path except the
+rejection counter:
+
+```js
+import client from 'prom-client';
+import requestLimiter, { MemoryStore } from 'express-request-limiter';
+
+const store = new MemoryStore();
+const rejected = new client.Counter({
+  name: 'http_concurrency_rejected_total',
+  help: 'Requests rejected by the concurrency limiter',
+  labelNames: ['reason'], // 'limit' | 'queue-full' | 'queue-timeout'
+});
+
+const limiter = requestLimiter({
+  max: 20,
+  store,
+  queue: { maxSize: 100, timeout: 10000 },
+  onLimitReached: (req, res, info) => rejected.inc({ reason: info.reason }),
+});
+
+new client.Gauge({
+  name: 'http_in_flight_requests',
+  help: 'Requests currently admitted by the concurrency limiter',
+  labelNames: ['key'],
+  collect() {
+    for (const [key, count] of Object.entries(store.snapshot())) this.set({ key }, count);
+  },
+});
+new client.Gauge({
+  name: 'http_concurrency_queue_size',
+  help: 'Requests waiting for a slot',
+  collect() { this.set(limiter.getQueueSize()); },
+});
+
+app.use(limiter);
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', client.register.contentType);
+  res.send(await client.register.metrics());
+});
+```
+
 ## Skip health checks and internal traffic
 
 ```js
@@ -138,6 +184,85 @@ app.post('/jobs', perUser, createJob);
 ```
 
 Mounting the *same* instance twice on a request path counts it once.
+
+## Other frameworks
+
+The middleware only uses standard `req`/`res` APIs, so it is not tied to
+Express. One thing to know when wrapping it in a promise: on rejection the
+limiter writes the `429` and ends the response itself — it does **not** call
+`next` — so adapters should also settle when the response finishes.
+
+### Plain `node:http` and Connect
+
+```js
+import { createServer } from 'node:http';
+const limit = requestLimiter({ max: 10 });
+
+createServer((req, res) => {
+  limit(req, res, (err) => {
+    if (err) { res.statusCode = 500; return res.end(); }
+    handle(req, res); // rejected requests never get here
+  });
+}).listen(3000);
+```
+
+Connect: `app.use(requestLimiter({ max: 10 }))`, identical to Express.
+
+### Fastify
+
+Via [`@fastify/middie`](https://github.com/fastify/middie), which runs
+Connect-style middleware on the raw request:
+
+```js
+import Fastify from 'fastify';
+import middie from '@fastify/middie';
+
+const fastify = Fastify();
+await fastify.register(middie);
+fastify.use(requestLimiter({ max: 10 }));
+```
+
+### Koa
+
+```js
+const limit = requestLimiter({ max: 10 });
+
+app.use((ctx, next) => new Promise((resolve, reject) => {
+  ctx.res.once('finish', resolve); // rejection path: the limiter ended the response
+  ctx.res.once('close', resolve);  // client left while queued
+  limit(ctx.req, ctx.res, (err) => (err ? reject(err) : resolve(next())));
+}));
+```
+
+When the limiter rejects, the `429` goes straight to the raw response; Koa
+sees the response is no longer writable and skips its own respond step.
+
+### Next.js API routes
+
+```js
+// lib/limiter.js
+import requestLimiter from 'express-request-limiter';
+
+const limiter = requestLimiter({ max: 5 });
+export const withLimit = (req, res) => new Promise((resolve, reject) => {
+  res.once('finish', resolve); // rejection path
+  res.once('close', resolve);  // client left while queued
+  limiter(req, res, (err) => (err ? reject(err) : resolve()));
+});
+
+// pages/api/heavy.js
+import { withLimit } from '../../lib/limiter';
+
+export default async function handler(req, res) {
+  await withLimit(req, res);
+  if (res.writableEnded) return; // was rejected with 429
+  // ...the actual work
+}
+```
+
+Keep the limiter in a module-level singleton (as above) so the count is shared
+across requests; creating it inside the handler would give every request its
+own fresh counter.
 
 ## Testing your own app
 

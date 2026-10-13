@@ -82,7 +82,7 @@ Admitted: X-Concurrency-Limit=<limit>, X-Concurrency-Remaining=<limit-current>. 
 - src/index.ts (entry: default + named requestLimiter, RequestLimiter, MemoryStore, compileRoutes, all types), src/types.ts
 - src/request-limiter.ts (middleware), src/memory-store.ts, src/routes.ts (compileRoutes/getRequestPath), src/options.ts (validation)
 - dist/ (build output via tsup: index.js ESM, index.cjs CJS, index.d.ts, index.d.cts)
-- docs/api.md (full reference), docs/stores.md, docs/recipes.md, docs/migration.md, AGENTS.md (contributor guide for agents)
+- docs/api.md (full reference), docs/stores.md, docs/recipes.md (incl. Prometheus metrics; Koa/Fastify/Next.js adapters), docs/concurrency-vs-rate-limiting.md, docs/migration.md, AGENTS.md (contributor guide for agents)
 
 ## Common mistakes
 
