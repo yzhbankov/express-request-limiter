@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows
 - Recipes for Prometheus metrics (prom-client) and for running the middleware on Koa, Fastify (`@fastify/middie`), Next.js API routes, and plain `node:http`.
 - README: "Without Express" section and a note that releases are published with npm provenance.
 
+### Changed
+- Dev dependencies: vitest and @vitest/coverage-v8 upgraded to 4.x, resolving the @vitest/mocker path-traversal advisory (GHSA dev-only); the tinypool/esbuild `overrides` are no longer needed and were removed. Statement coverage threshold adjusted to 99% because vitest 4's AST-based v8 coverage counts sub-line statements that line-based remapping could not see; line and function thresholds stay at 100%.
+
 ## [1.0.0] - 2026-10-07
 
 Complete rewrite. See [docs/migration.md](docs/migration.md) for the upgrade path.
