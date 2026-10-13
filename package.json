@@ -1,6 +1,6 @@
 {
   "name": "express-request-limiter",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Super light, super fast concurrency limiter middleware for Express 5/4, Connect and Node.js http. Limit concurrent in-flight requests globally, per route or per user/IP, queue or reject with 429. Zero dependencies, 20 kB, ~4x less overhead than express-rate-limit, 100% test coverage, TypeScript.",
   "type": "module",
   "main": "./dist/index.cjs",
